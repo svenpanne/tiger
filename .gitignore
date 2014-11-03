@@ -1,4 +1,7 @@
+*.exe
 *.hi
 *.o
 *.swp
 *~
+chapter02/Tiger
+chapter02/Tiger.hs
