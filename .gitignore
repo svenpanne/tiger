@@ -1,7 +1,13 @@
+*.dot
 *.exe
 *.hi
+*.info
 *.o
+*.png
 *.swp
 *~
-chapter02/Tiger
-chapter02/Tiger.hs
+chapter02/Lexer
+chapter02/Lexer.hs
+chapter03/Lexer.hs
+chapter03/Parser
+chapter03/Parser.hs
