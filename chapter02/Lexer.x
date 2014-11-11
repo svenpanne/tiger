@@ -1,10 +1,14 @@
 {
-module Main (main) where
+module Lexer (
+  Token(..), AlexPosn(..), TokenClass(..), unLex,
+  Alex, runAlex', alexMonadScan', alexError', main
+) where
 
 import Prelude hiding ( Ordering(..) )
-import Control.Monad ( when )
+import Control.Monad ( liftM, liftM2, when )
 import Data.Char ( chr, ord )
 import Numeric ( readDec )
+import System.Environment ( getArgs )
 }
 
 %wrapper "monadUserState"
@@ -89,15 +93,25 @@ getString (_, _, _, s) len = take len s
 -- user state ------------------------------------------------------------------
 
 data AlexUserState = AlexUserState {
+  filePath :: FilePath,
   commentDepth :: Int,
   stringStart :: AlexPosn,
   stringContents :: String }
 
 alexInitUserState :: AlexUserState
 alexInitUserState = AlexUserState {
+  filePath = "<unknown>",
   commentDepth = 0,
   stringStart = alexStartPos,
   stringContents = "" }
+
+getFilePath :: Alex FilePath
+getFilePath = liftM filePath alexGetUserState
+
+setFilePath :: FilePath -> Alex ()
+setFilePath fp = do
+  us <- alexGetUserState
+  alexSetUserState us{filePath = fp}
 
 incCommentDepthBy :: Int -> Alex Int
 incCommentDepthBy n = do
@@ -174,6 +188,60 @@ data TokenClass =
   | EOF
   deriving ( Show )
 
+unLex :: TokenClass -> String
+unLex WHILE = "while"
+unLex FOR = "for"
+unLex TO = "to"
+unLex BREAK = "break"
+unLex LET = "let"
+unLex IN = "in"
+unLex END = "end"
+unLex FUNCTION = "function"
+unLex VAR = "var"
+unLex TYPE = "type"
+unLex ARRAY = "array"
+unLex IF = "if"
+unLex THEN = "then"
+unLex ELSE = "else"
+unLex DO = "do"
+unLex OF = "of"
+unLex NIL = "nil"
+unLex COMMA = ","
+unLex COLON = ":"
+unLex SEMICOLON = ";"
+unLex LPAREN = "("
+unLex RPAREN = ")"
+unLex LBRACK = "["
+unLex RBRACK = "]"
+unLex LBRACE = "{"
+unLex RBRACE = "}"
+unLex DOT = "."
+unLex PLUS = "+"
+unLex MINUS = "-"
+unLex TIMES = "*"
+unLex DIVIDE = "/"
+unLex EQ = "="
+unLex NEQ = "<>"
+unLex LT = "<"
+unLex LE = "<="
+unLex GT = ">"
+unLex GE = ">="
+unLex AND = "$"
+unLex OR = "|"
+unLex ASSIGN = ":="
+unLex (INT i) = show i
+unLex (ID s) = s
+unLex (STRING s) = show s
+unLex EOF = "<EOF>"
+
+alexEOF :: Alex Token
+alexEOF = do
+  p <- alexGetPosition
+  return $ Token p EOF
+
+alexGetPosition :: Alex AlexPosn
+alexGetPosition = liftM getPosition alexGetInput
+
 -- grammar helpers -------------------------------------------------------------
 
 makeToken :: TokenClass -> AlexAction Token
@@ -219,25 +287,48 @@ incrementCommentDepthBy n input len = do
   cd <- incCommentDepthBy n
   begin (if cd == 0 then 0 else comment) input len
 
-alexEOF :: Alex Token
-alexEOF = return (Token undefined EOF)
+alexMonadScan' :: Alex Token
+alexMonadScan' = do
+  let err = alexError' . getPosition
+  inp <- alexGetInput
+  sc <- alexGetStartCode
+  case alexScan inp sc of
+    AlexEOF -> case () of
+      _ | sc == string  -> err inp "string not terminated"
+        | sc == comment -> err inp "comment not terminated"
+        | otherwise     -> alexEOF
+    AlexError inp' ->
+        err inp' ("lexical error at character '" ++ getString inp' 1 ++ "'")
+    AlexSkip inp' len -> do
+        alexSetInput inp'
+        alexMonadScan'
+    AlexToken inp' len action -> do
+        alexSetInput inp'
+        action (ignorePendingBytes inp) len
 
-isEOF :: Token -> Bool
-isEOF (Token _ EOF) = True
-isEOF _ = False
+alexError' :: AlexPosn -> String -> Alex a
+alexError' (AlexPn _ l c) msg = do
+  fp <- getFilePath
+  alexError (fp ++ ":" ++ show l ++ ":" ++ show c ++ ": " ++ msg)
 
-scan :: String -> Either String [Token]
-scan str =
-  let loop = do
-        t <- alexMonadScan
-        if isEOF t
-           then do sc <- alexGetStartCode
-                   when (sc == comment) $ alexError "comment not closed at EOF"
-                   return []
-           else do ts <- loop
-                   return (t : ts)
-  in runAlex str loop
+runAlex' :: Alex a -> FilePath -> String -> Either String a
+runAlex' a fp input = runAlex input (setFilePath fp >> a)
+
+-- for testing -----------------------------------------------------------------
+
+lexer :: FilePath -> String -> Either String [Token]
+lexer = runAlex' $ loop []
+  where loop ts = do t <- alexMonadScan'
+                     case t of
+                       Token _ EOF -> return (reverse ts)
+                       _ -> loop (t:ts)
 
 main :: IO ()
-main = getContents >>= either error print . scan
+main = do
+  args <- getArgs
+  result <- case args of
+              []  -> fmap (lexer "<stdin>") getContents
+              [f] -> fmap (lexer f) (readFile f)
+              _   -> error "expected max. 1 argument"
+  either putStrLn print result
 }
