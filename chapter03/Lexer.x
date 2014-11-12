@@ -1,12 +1,12 @@
 {
 module Lexer (
-  Token(..), AlexPosn(..), TokenClass(..), unLex,
+  Token(..), Position(..), Line, Column, TokenClass(..), unLex,
   Alex, runAlex', alexMonadScan', alexError', main
 ) where
 
 import Prelude hiding ( Ordering(..) )
-import Control.Monad ( liftM, liftM2, when )
-import Data.Char ( chr, ord )
+import Control.Monad ( liftM, when )
+import Data.Char ( chr, ord, showLitChar )
 import Numeric ( readDec )
 import System.Environment ( getArgs )
 }
@@ -73,7 +73,7 @@ tiger :-
 <string>    \\\"        { addCharToString '"' }
 <string>    \\\\        { addCharToString '\\' }
 <string>    \\$white+\\ ;
-<string>    \\          { \_ _ -> alexError "illegal escape" }
+<string>    \\          { \inp _ -> errorAction (const "illegal escape") inp 0  }
 <string>    .           { addToString }
 
 <0>         $white+     ;
@@ -84,8 +84,8 @@ tiger :-
 {
 -- AlexInput helpers -----------------------------------------------------------
 
-getPosition :: AlexInput -> AlexPosn
-getPosition (p, _, _, _) = p
+getAlexPosn :: AlexInput -> AlexPosn
+getAlexPosn (p, _, _, _) = p
 
 getString :: AlexInput -> Int -> String
 getString (_, _, _, s) len = take len s
@@ -95,18 +95,31 @@ getString (_, _, _, s) len = take len s
 data AlexUserState = AlexUserState {
   filePath :: FilePath,
   commentDepth :: Int,
-  stringStart :: AlexPosn,
+  stringStart :: Position,
   stringContents :: String }
+
+data Position = Position FilePath Line Column
+type Line = Int
+type Column = Int
+
+instance Show Position where
+  showsPrec _ (Position fp l c) =
+    showString fp . showChar ':' . shows l . showChar ':' . shows c
+
+makePosition :: FilePath -> AlexPosn -> Position
+makePosition fp (AlexPn _ l c) = Position fp l c
 
 alexInitUserState :: AlexUserState
 alexInitUserState = AlexUserState {
   filePath = "<unknown>",
   commentDepth = 0,
-  stringStart = alexStartPos,
+  stringStart = makePosition (filePath alexInitUserState) alexStartPos,
   stringContents = "" }
 
-getFilePath :: Alex FilePath
-getFilePath = liftM filePath alexGetUserState
+getPosition :: AlexInput -> Alex Position
+getPosition input = do
+  us <- alexGetUserState
+  return $ makePosition (filePath us) (getAlexPosn input)
 
 setFilePath :: FilePath -> Alex ()
 setFilePath fp = do
@@ -120,25 +133,26 @@ incCommentDepthBy n = do
   alexSetUserState us{commentDepth = newCommentDepth}
   return newCommentDepth
 
-rememberStringStart :: AlexPosn -> Alex ()
-rememberStringStart p = do
+rememberStringStart :: Position -> Alex ()
+rememberStringStart pos = do
   us <- alexGetUserState
-  alexSetUserState us{stringStart = p}
+  alexSetUserState us{stringStart = pos}
 
 addToStringContents :: Char -> Alex ()
 addToStringContents c = do
   us <- alexGetUserState
   alexSetUserState us{stringContents = c : stringContents us}
 
-retrieveString :: Alex (AlexPosn, String)
+retrieveString :: Alex (Position, String)
 retrieveString = do
   us <- alexGetUserState
-  alexSetUserState us{stringStart = alexStartPos, stringContents = ""}
+  alexSetUserState us{stringStart = stringStart alexInitUserState,
+                      stringContents = stringContents alexInitUserState}
   return (stringStart us, reverse (stringContents us))
 
 -- tokens ----------------------------------------------------------------------
 
-data Token = Token AlexPosn TokenClass
+data Token = Token Position TokenClass
   deriving ( Show )
 
 data TokenClass =
@@ -236,11 +250,12 @@ unLex EOF = "<EOF>"
 
 alexEOF :: Alex Token
 alexEOF = do
-  p <- alexGetPosition
-  return $ Token p EOF
+  pos <- alexGetInput >>= getPosition
+  return $ Token pos EOF
 
-alexGetPosition :: Alex AlexPosn
-alexGetPosition = liftM getPosition alexGetInput
+isEOF :: Token -> Bool
+isEOF (Token _ EOF) = True
+isEOF _ = False
 
 -- grammar helpers -------------------------------------------------------------
 
@@ -248,57 +263,62 @@ makeToken :: TokenClass -> AlexAction Token
 makeToken = makeTokenWith . const
 
 makeTokenWith :: (String -> TokenClass) -> AlexAction Token
-makeTokenWith f =
-  token (\input len -> Token (getPosition input) (f (getString input len)))
+makeTokenWith f input len = do
+  pos <- getPosition input
+  return $ Token pos (f (getString input len))
 
 startString :: AlexAction Token
 startString input len = do
-  rememberStringStart (getPosition input)
-  begin string input len
+  pos <- getPosition input
+  rememberStringStart pos
+  alexSetStartCode string
+  alexMonadScan'
 
 endString :: AlexAction Token
-endString = (\_ _ -> do
+endString _ _ = do
   (p, s) <- retrieveString
-  return (Token p (STRING s))) `andBegin` 0
+  alexSetStartCode 0
+  return $ Token p (STRING s)
 
 addToString :: AlexAction Token
 addToString input len = do
   mapM_ addToStringContents (getString input len)
-  skip input len
+  alexMonadScan'
 
 addCharToString :: Char -> AlexAction Token
-addCharToString c input len = do
+addCharToString c _ _ = do
   addToStringContents c
-  skip input len
+  alexMonadScan'
 
 addControlCharToString :: AlexAction Token
 addControlCharToString input len =
   addCharToString (chr (ord (last (getString input len)) - ord '@')) input len
 
 addAsciiToString :: AlexAction Token
-addAsciiToString  input len = do
+addAsciiToString input len = do
   let val = fst . head . readDec . drop 1 $ getString input len
   when (val >= 256) $
-    alexError ("invalid ASCII escape " ++ getString input len)
+    errorAction (\s -> "invalid ASCII escape '" ++ s ++ "'") input len
   addCharToString (chr val) input len
 
 incrementCommentDepthBy :: Int -> AlexAction Token
 incrementCommentDepthBy n input len = do
   cd <- incCommentDepthBy n
-  begin (if cd == 0 then 0 else comment) input len
+  alexSetStartCode (if cd == 0 then 0 else comment)
+  alexMonadScan'
 
 alexMonadScan' :: Alex Token
 alexMonadScan' = do
-  let err = alexError' . getPosition
   inp <- alexGetInput
   sc <- alexGetStartCode
   case alexScan inp sc of
     AlexEOF -> case () of
-      _ | sc == string  -> err inp "string not terminated"
-        | sc == comment -> err inp "comment not terminated"
+      _ | sc == string  -> errorAction (const "string not terminated") inp 0
+        | sc == comment -> errorAction (const "comment not terminated") inp 0
         | otherwise     -> alexEOF
     AlexError inp' ->
-        err inp' ("lexical error at character '" ++ getString inp' 1 ++ "'")
+        errorAction (\c ->
+          "lexical error at character '" ++ showLitChar (head c) "'") inp' 1
     AlexSkip inp' len -> do
         alexSetInput inp'
         alexMonadScan'
@@ -306,10 +326,13 @@ alexMonadScan' = do
         alexSetInput inp'
         action (ignorePendingBytes inp) len
 
-alexError' :: AlexPosn -> String -> Alex a
-alexError' (AlexPn _ l c) msg = do
-  fp <- getFilePath
-  alexError (fp ++ ":" ++ show l ++ ":" ++ show c ++ ": " ++ msg)
+errorAction :: (String -> String) -> AlexAction a
+errorAction f input len = do
+  pos <- getPosition input
+  alexError' pos (f (getString input len))
+
+alexError' :: Position -> String -> Alex a
+alexError' p msg = alexError (show p ++ ": " ++ msg)
 
 runAlex' :: Alex a -> FilePath -> String -> Either String a
 runAlex' a fp input = runAlex input (setFilePath fp >> a)
@@ -317,11 +340,17 @@ runAlex' a fp input = runAlex input (setFilePath fp >> a)
 -- for testing -----------------------------------------------------------------
 
 lexer :: FilePath -> String -> Either String [Token]
-lexer = runAlex' $ loop []
-  where loop ts = do t <- alexMonadScan'
-                     case t of
-                       Token _ EOF -> return (reverse ts)
-                       _ -> loop (t:ts)
+lexer = runAlex' $ unfoldWhileM (not . isEOF) alexMonadScan'
+
+unfoldWhileM :: Monad m => (a -> Bool) -> m a -> m [a]
+unfoldWhileM p m = go id
+ where go f = do x <- m
+                 if p x
+                   then go (f . (x:))
+                   else return (f [])
+
+renderToken :: Token -> String
+renderToken (Token p c) = show p ++ ": " ++ unLex c
 
 main :: IO ()
 main = do
@@ -330,5 +359,5 @@ main = do
               []  -> fmap (lexer "<stdin>") getContents
               [f] -> fmap (lexer f) (readFile f)
               _   -> error "expected max. 1 argument"
-  either putStrLn print result
+  either putStrLn (mapM_ (putStrLn . renderToken)) result
 }
