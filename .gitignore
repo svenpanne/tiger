@@ -5,6 +5,7 @@
 *.o
 *.png
 *.swp
+*/dist
 *~
 chapter02/Lexer
 chapter02/Lexer.hs
@@ -12,7 +13,3 @@ chapter03/Lexer
 chapter03/Lexer.hs
 chapter03/Parser
 chapter03/Parser.hs
-chapter04/Lexer
-chapter04/Lexer.hs
-chapter04/Parser
-chapter04/Parser.hs

@@ -1,10 +1,9 @@
 {
-module Parser ( Tree(..), parser, main ) where
+module Parser ( Tree(..), parser ) where
 
 import Prelude hiding ( Ordering(..) )
-import DOT
-import Lexer hiding ( main )
-import System.Environment ( getArgs )
+import DOT ( Tree(..) )
+import Lexer
 }
 
 %name parseProgram program
@@ -199,15 +198,4 @@ parseError (Token p t) =
 
 parser :: FilePath -> String -> Either String (Tree String)
 parser = runAlex' parseProgram
-
--- for testing -----------------------------------------------------------------
-
-main :: IO ()
-main = do
-  args <- getArgs
-  result <- case args of
-              []  -> fmap (parser "<stdin>") getContents
-              [f] -> fmap (parser f) (readFile f)
-              _   -> error "expected max. 1 argument"
-  either putStrLn (putStrLn . toDOT) result
 }
