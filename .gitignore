@@ -5,11 +5,7 @@
 *.o
 *.png
 *.swp
-*/dist
 *~
-chapter02/Lexer
-chapter02/Lexer.hs
-chapter03/Lexer
-chapter03/Lexer.hs
-chapter03/Parser
-chapter03/Parser.hs
+.cabal-sandbox/
+cabal.sandbox.config
+dist/

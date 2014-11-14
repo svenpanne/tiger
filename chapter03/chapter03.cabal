@@ -1,7 +1,7 @@
-name:                chapter04
+name:                chapter03
 version:             1.0.0.0
-synopsis:            Modern Compiler Implementation in ML (Chapter 4)
-description:         Abstract Syntax
+synopsis:            Modern Compiler Implementation in ML (Chapter 3)
+description:         Parsing
 homepage:            https://github.com/svenpanne/tiger
 license:             BSD3
 license-file:        ../LICENSE
@@ -13,7 +13,7 @@ cabal-version:       >=1.10
 
 executable parser
   main-is:             Main.hs
-  build-depends:       base >=4.7 && <4.8, chapter04
+  build-depends:       base >=4.7 && <4.8, chapter03
   build-tools:         alex, happy
   default-language:    Haskell2010
   ghc-options:         -Wall

@@ -21,11 +21,11 @@ renderAsDOT t = showString "graph g {\n" .
           showId i . showString " [ label=\"" . showLabel l . showString "\" ]"
         showId (Id i) = showString i
         showLabel (Label l) = showString l
-        showEdge (Edge f t) = showId f . showString " -- " . showId t
+        showEdge (Edge a b) = showId a . showString " -- " . showId b
         showSepByLines f = foldr (\x s -> f x . showChar '\n' . s) id
 
 addIds :: Tree String -> Tree Node
-addIds = flip evalState 0 . go
+addIds = flip evalState (0 :: Int) . go
   where go (Tree s ts) = do
           i <- get
           put (i + 1)

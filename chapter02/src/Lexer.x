@@ -1,14 +1,15 @@
 {
+{-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-unused-matches
+    -fno-warn-missing-signatures -fno-warn-name-shadowing -fno-warn-amp #-}
 module Lexer (
   Token(..), Position(..), Line, Column, TokenClass(..), unLex,
-  Alex, runAlex', alexMonadScan', alexError', main
+  Alex, runAlex', alexMonadScan', alexError'
 ) where
 
 import Prelude hiding ( Ordering(..) )
-import Control.Monad ( liftM, when )
-import Data.Char ( chr, ord, showLitChar )
+import Control.Monad ( when )
+import Data.Char ( chr, showLitChar ) -- ord is imported by alex template
 import Numeric ( readDec )
-import System.Environment ( getArgs )
 }
 
 %wrapper "monadUserState"
@@ -253,10 +254,6 @@ alexEOF = do
   pos <- alexGetInput >>= getPosition
   return $ Token pos EOF
 
-isEOF :: Token -> Bool
-isEOF (Token _ EOF) = True
-isEOF _ = False
-
 -- grammar helpers -------------------------------------------------------------
 
 makeToken :: TokenClass -> AlexAction Token
@@ -336,28 +333,4 @@ alexError' p msg = alexError (show p ++ ": " ++ msg)
 
 runAlex' :: Alex a -> FilePath -> String -> Either String a
 runAlex' a fp input = runAlex input (setFilePath fp >> a)
-
--- for testing -----------------------------------------------------------------
-
-lexer :: FilePath -> String -> Either String [Token]
-lexer = runAlex' $ unfoldWhileM (not . isEOF) alexMonadScan'
-
-unfoldWhileM :: Monad m => (a -> Bool) -> m a -> m [a]
-unfoldWhileM p m = go id
- where go f = do x <- m
-                 if p x
-                   then go (f . (x:))
-                   else return (f [])
-
-renderToken :: Token -> String
-renderToken (Token p c) = show p ++ ": " ++ unLex c
-
-main :: IO ()
-main = do
-  args <- getArgs
-  result <- case args of
-              []  -> fmap (lexer "<stdin>") getContents
-              [f] -> fmap (lexer f) (readFile f)
-              _   -> error "expected max. 1 argument"
-  either putStrLn (mapM_ (putStrLn . renderToken)) result
 }

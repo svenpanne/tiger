@@ -1,7 +1,7 @@
-name:                chapter04
+name:                chapter02
 version:             1.0.0.0
-synopsis:            Modern Compiler Implementation in ML (Chapter 4)
-description:         Abstract Syntax
+synopsis:            Modern Compiler Implementation in ML (Chapter 2)
+description:         Lexical Analysis
 homepage:            https://github.com/svenpanne/tiger
 license:             BSD3
 license-file:        ../LICENSE
@@ -11,16 +11,16 @@ category:            Compiler
 build-type:          Simple
 cabal-version:       >=1.10
 
-executable parser
+executable lexer
   main-is:             Main.hs
-  build-depends:       base >=4.7 && <4.8, chapter04
+  build-depends:       base >=4.7 && <4.8, chapter02
   build-tools:         alex, happy
   default-language:    Haskell2010
   ghc-options:         -Wall
 
 library
-  build-depends:       base >=4.7 && <4.8, array >=0.5 && <0.6, transformers >=0.3 && <0.4
+  build-depends:       base >=4.7 && <4.8, array >=0.5 && <0.6
   hs-source-dirs:      src
-  exposed-modules:     Lexer, DOT, Parser
+  exposed-modules:     Lexer
   default-language:    Haskell2010
   ghc-options:        -Wall

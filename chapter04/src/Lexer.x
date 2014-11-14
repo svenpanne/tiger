@@ -254,10 +254,6 @@ alexEOF = do
   pos <- alexGetInput >>= getPosition
   return $ Token pos EOF
 
-isEOF :: Token -> Bool
-isEOF (Token _ EOF) = True
-isEOF _ = False
-
 -- grammar helpers -------------------------------------------------------------
 
 makeToken :: TokenClass -> AlexAction Token
