@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-unused-matches
     -fno-warn-missing-signatures -fno-warn-name-shadowing -fno-warn-amp #-}
 module Lexer (
-  Token(..), Position(..), Line, Column, TokenClass(..), unLex,
+  Token(..), Pos(..), Line, Column, TokenClass(..), unLex,
   Alex, runAlex', alexMonadScan', alexError'
 ) where
 
@@ -96,31 +96,31 @@ getString (_, _, _, s) len = take len s
 data AlexUserState = AlexUserState {
   filePath :: FilePath,
   commentDepth :: Int,
-  stringStart :: Position,
+  stringStart :: Pos,
   stringContents :: String }
 
-data Position = Position FilePath Line Column
+data Pos = Pos FilePath Line Column
 type Line = Int
 type Column = Int
 
-instance Show Position where
-  showsPrec _ (Position fp l c) =
+instance Show Pos where
+  showsPrec _ (Pos fp l c) =
     showString fp . showChar ':' . shows l . showChar ':' . shows c
 
-makePosition :: FilePath -> AlexPosn -> Position
-makePosition fp (AlexPn _ l c) = Position fp l c
+makePos :: FilePath -> AlexPosn -> Pos
+makePos fp (AlexPn _ l c) = Pos fp l c
 
 alexInitUserState :: AlexUserState
 alexInitUserState = AlexUserState {
   filePath = "<unknown>",
   commentDepth = 0,
-  stringStart = makePosition (filePath alexInitUserState) alexStartPos,
+  stringStart = makePos (filePath alexInitUserState) alexStartPos,
   stringContents = "" }
 
-getPosition :: AlexInput -> Alex Position
-getPosition input = do
+getPos :: AlexInput -> Alex Pos
+getPos input = do
   us <- alexGetUserState
-  return $ makePosition (filePath us) (getAlexPosn input)
+  return $ makePos (filePath us) (getAlexPosn input)
 
 setFilePath :: FilePath -> Alex ()
 setFilePath fp = do
@@ -134,7 +134,7 @@ incCommentDepthBy n = do
   alexSetUserState us{commentDepth = newCommentDepth}
   return newCommentDepth
 
-rememberStringStart :: Position -> Alex ()
+rememberStringStart :: Pos -> Alex ()
 rememberStringStart pos = do
   us <- alexGetUserState
   alexSetUserState us{stringStart = pos}
@@ -144,7 +144,7 @@ addToStringContents c = do
   us <- alexGetUserState
   alexSetUserState us{stringContents = c : stringContents us}
 
-retrieveString :: Alex (Position, String)
+retrieveString :: Alex (Pos, String)
 retrieveString = do
   us <- alexGetUserState
   alexSetUserState us{stringStart = stringStart alexInitUserState,
@@ -153,7 +153,7 @@ retrieveString = do
 
 -- tokens ----------------------------------------------------------------------
 
-data Token = Token Position TokenClass
+data Token = Token { tokenPos :: Pos, tokenClass :: TokenClass }
   deriving ( Show )
 
 data TokenClass =
@@ -197,9 +197,9 @@ data TokenClass =
   | AND
   | OR
   | ASSIGN
-  | INT Integer
-  | ID String
-  | STRING String
+  | INT { tokenClassInt :: Integer }
+  | ID { tokenClassId :: String }
+  | STRING { tokenClassString :: String }
   | EOF
   deriving ( Show )
 
@@ -251,7 +251,7 @@ unLex EOF = "<EOF>"
 
 alexEOF :: Alex Token
 alexEOF = do
-  pos <- alexGetInput >>= getPosition
+  pos <- alexGetInput >>= getPos
   return $ Token pos EOF
 
 -- grammar helpers -------------------------------------------------------------
@@ -261,12 +261,12 @@ makeToken = makeTokenWith . const
 
 makeTokenWith :: (String -> TokenClass) -> AlexAction Token
 makeTokenWith f input len = do
-  pos <- getPosition input
+  pos <- getPos input
   return $ Token pos (f (getString input len))
 
 startString :: AlexAction Token
 startString input len = do
-  pos <- getPosition input
+  pos <- getPos input
   rememberStringStart pos
   alexSetStartCode string
   alexMonadScan'
@@ -325,10 +325,10 @@ alexMonadScan' = do
 
 errorAction :: (String -> String) -> AlexAction a
 errorAction f input len = do
-  pos <- getPosition input
+  pos <- getPos input
   alexError' pos (f (getString input len))
 
-alexError' :: Position -> String -> Alex a
+alexError' :: Pos -> String -> Alex a
 alexError' p msg = alexError (show p ++ ": " ++ msg)
 
 runAlex' :: Alex a -> FilePath -> String -> Either String a

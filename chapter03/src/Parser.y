@@ -70,11 +70,11 @@ dec : tydec                                     { $1 }
     | vardec                                    { $1 }
     | fundec                                    { $1 }
 
-tydec : type ID '=' ty                          { Tree "TypeDec" [Tree $2 [], $4] }
+tydec : type ID '=' ty                          { Tree "$Type" [Tree $2 [], $4] }
 
-ty : ID                                         { Tree "NameTy" [Tree $1 []] }
-   | '{' tyfields '}'                           { Tree "RecordTy" $2 }
-   | array of ID                                { Tree "ArrayTy" [Tree $3 []] }
+ty : ID                                         { Tree "$NameTy" [Tree $1 []] }
+   | '{' tyfields '}'                           { Tree "$RecordTy" $2 }
+   | array of ID                                { Tree "$ArrayTy" [Tree $3 []] }
 
 tyfields :                                      { [] }
          | tyfields_rev                         { reverse $1 }
@@ -82,80 +82,81 @@ tyfields :                                      { [] }
 tyfields_rev : typefield                        { [$1] }
              | tyfields_rev ',' typefield       { $3 : $1 }
 
-typefield : ID ':' type_id                      { Tree "field" [Tree $1 [], Tree $3 []] }
+typefield : ID ':' type_id                      { Tree "$Field" [Tree $1 [], Tree $3 []] }
 
 type_id : ID                                    { $1 }
 
-vardec : var ID opt_type ':=' exp               { Tree "VarDec" ([Tree $2 []] ++ $3 ++ [$5]) }
+vardec : var ID opt_type ':=' exp               { Tree "$Var" ([Tree $2 []] ++ $3 ++ [$5]) }
 
 opt_type :                                      { [] }
          | ':' type_id                          { [Tree $2 []] }
 
-fundec : function ID '(' tyfields ')' opt_type '=' exp { Tree "FunctionDec" ([Tree $2 []] ++ $4 ++ $6 ++ [$8]) }
+fundec : function ID '(' tyfields ')' opt_type '=' exp
+                                                { Tree "$Function" ([Tree $2 []] ++ $4 ++ $6 ++ [$8]) }
 
 exp : matched                                   { $1 }
     | unmatched                                 { $1 }
 
 matched : disj                                  { $1 }
-        | ID '[' matched ']' of matched         { Tree "ArrayExp" [Tree $1 [], $3, $6] }
-        | lvalue ':=' matched                   { Tree "AssignExp" [$1, $3] }
-        | if exp then matched else matched      { Tree "IfExp" [$2, $4, $6] }
-        | while exp do matched                  { Tree "WhileExp" [$2, $4] }
-        | for ID ':=' exp to exp do matched     { Tree "ForExp" [Tree $2 [], $4, $6, $8] }
+        | lvalue ':=' matched                   { Tree ":=" [$1, $3] }
+        | ID '[' matched ']' of matched         { Tree "$Array" [Tree $1 [], $3, $6] }
+        | if exp then matched else matched      { Tree "$If" [$2, $4, $6] }
+        | while exp do matched                  { Tree "$While" [$2, $4] }
+        | for ID ':=' exp to exp do matched     { Tree "$For" [Tree $2 [], $4, $6, $8] }
 
-unmatched : lvalue ':=' unmatched               { Tree "AssignExp" [$1, $3] }
-          | ID '[' matched ']' of unmatched     { Tree "ArrayExp" [Tree $1 [], $3, $6] }
-          | if exp then matched else unmatched  { Tree "IfExp" [$2, $4, $6] }
-          | if exp then matched                 { Tree "IfExp" [$2, $4, Tree "SeqExp" []] }
-          | while exp do unmatched              { Tree "WhileExp" [$2, $4] }
-          | for ID ':=' exp to exp do unmatched { Tree "ForExp" [Tree $2 [], $4, $6, $8] }
+unmatched : lvalue ':=' unmatched               { Tree ":=" [$1, $3] }
+          | ID '[' matched ']' of unmatched     { Tree "$Array" [Tree $1 [], $3, $6] }
+          | if exp then matched else unmatched  { Tree "$If" [$2, $4, $6] }
+          | if exp then matched                 { Tree "$If" [$2, $4, Tree "SeqExp" []] }
+          | while exp do unmatched              { Tree "$While" [$2, $4] }
+          | for ID ':=' exp to exp do unmatched { Tree "$For" [Tree $2 [], $4, $6, $8] }
 
-lvalue : ID lvalue1                             { $2 (Tree "SimpleVar" [Tree $1 []]) }
+lvalue : ID lvalue1                             { $2 (Tree $1 []) }
 
 lvalue1 :                                       { \v -> v }
-        | '[' matched ']' lvalue1               { \v -> $4 (Tree "SubscriptVar" [v, $2]) }
-        | '.' ID lvalue1                        { \v -> $3 (Tree "FieldVar" [v, Tree $2 []]) }
+        | '[' matched ']' lvalue1               { \v -> $4 (Tree "[]" [v, $2]) }
+        | '.' ID lvalue1                        { \v -> $3 (Tree "." [v, Tree $2 []]) }
 
-disj : disj '|' conj                            { Tree "IfExp" [$1, Tree "IntExp" [Tree "1" []], $3] }
+disj : disj '|' conj                            { Tree "$If" [$1, Tree "1" [], $3] }
      | conj                                     { $1 }
 
-conj : conj '&' comp                            { Tree "IfExp" [$1, $3, Tree "IntExp" [Tree "0" []]] }
+conj : conj '&' comp                            { Tree "$If" [$1, $3, Tree "0" []] }
      | comp                                     { $1 }
 
-comp : arith_exp rel arith_exp                  { Tree "OpExp" [$1, $2, $3] }
+comp : arith_exp rel arith_exp                  { Tree $2 [$1, $3] }
      | arith_exp                                { $1 }
 
-rel : '='                                       { Tree "EqOp" [] }
-    | '<>'                                      { Tree "NeqOp" [] }
-    | '<'                                       { Tree "LtOp" [] }
-    | '<='                                      { Tree "LeOp" [] }
-    | '>'                                       { Tree "GtOp" [] }
-    | '>='                                      { Tree "GeOp" [] }
+rel : '='                                       { "=" }
+    | '<>'                                      { "<>" }
+    | '<'                                       { "<" }
+    | '<='                                      { "<=" }
+    | '>'                                       { ">" }
+    | '>='                                      { ">=" }
 
-arith_exp : arith_exp add_op term               { Tree "OpExp" [$1, $2, $3] }
+arith_exp : arith_exp add_op term               { Tree $2 [$1, $3] }
           | term                                { $1 }
 
-add_op : '+'                                    { Tree "PlusOp" [] }
-       | '-'                                    { Tree "MinusOp" [] }
+add_op : '+'                                    { "+" }
+       | '-'                                    { "-" }
 
-term : term mul_op pref_exp                     { Tree "OpExp" [$1, $2, $3] }
+term : term mul_op pref_exp                     { Tree $2 [$1, $3] }
      | pref_exp                                 { $1 }
 
-mul_op : '*'                                    { Tree "TimesOp" [] }
-       | '/'                                    { Tree "DividedOp" [] }
+mul_op : '*'                                    { "*" }
+       | '/'                                    { "/" }
 
-pref_exp : '-' pref_exp                         { Tree "OpExp" [Tree "IntExp" [Tree "0" []], Tree "MinusOp" [],$2] }
+pref_exp : '-' pref_exp                         { Tree "-" [Tree "0" [], $2] }
          | factor                               { $1 }
 
 factor : lvalue                                 { $1 }
-       | nil                                    { Tree "NilExp" [] }
+       | nil                                    { Tree "nil" [] }
        | '(' expseq ')'                         { $2 }
-       | INT                                    { Tree "IntExp" [Tree (show $1) []] }
-       | STRING                                 { Tree "StringExp" [Tree (makeLabel $1) []] }
-       | ID '(' call_args ')'                   { Tree "CallExp" (Tree $1 [] : $3) }
-       | type_id '{' fields '}'                 { Tree "RecordExp" (Tree $1 [] : $3) }
-       | break                                  { Tree "BreakExp" [] }
-       | let decs in expseq end                 { Tree "LetExp" (reverse $2 ++ [$4]) }
+       | INT                                    { Tree (show $1) [] }
+       | STRING                                 { Tree (makeLabel $1) [] }
+       | ID '(' call_args ')'                   { Tree "$Call" (Tree $1 [] : $3) }
+       | type_id '{' fields '}'                 { Tree "$Record" (Tree $1 [] : $3) }
+       | break                                  { Tree "$Break" [] }
+       | let decs in expseq end                 { Tree "$Let" ($2 ++ [$4]) }
 
 call_args :                                     { [] }
           | call_args_rev                       { reverse $1 }
@@ -169,7 +170,7 @@ fields :                                        { [] }
 fields_rev : field                              { [$1] }
            | fields_rev ',' field               { $3 : $1 }
 
-field : ID '=' exp                              { Tree "Field" [Tree $1 [], $3] }
+field : ID '=' exp                              { Tree "$AssignField" [Tree $1 [], $3] }
 
 expseq :                                        { expseqToTree [] }
        | expseq_rev                             { expseqToTree (reverse $1) }
