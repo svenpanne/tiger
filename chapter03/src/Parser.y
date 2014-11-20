@@ -1,8 +1,7 @@
 {
-module Parser ( Tree(..), parser ) where
+module Parser ( parser ) where
 
 import Prelude hiding ( Ordering(..) )
-import DOT ( Tree(..) )
 import Lexer
 }
 
@@ -53,141 +52,164 @@ import Lexer
   '&'         { Token _ AND }
   '|'         { Token _ OR }
   ':='        { Token _ ASSIGN }
-  INT         { Token _ (INT $$) }
-  ID          { Token _ (ID $$) }
-  STRING      { Token _ (STRING $$) }
+  INT         { Token _ (INT _) }
+  ID          { Token _ (ID _) }
+  STRING      { Token _ (STRING _) }
 
 %%
 
-program : exp                                   { $1 }
+program :: { () }
+program : exp                                   { () }
 
-decs : decs_rev                                 { reverse $1 }
+decs :: { () }
+decs :                                          { () }
+     | decs dec                                 { () }
 
-decs_rev :                                      { [] }
-         | decs_rev dec                         { $2 : $1 }
+dec :: { () }
+dec : tydec                                     { () }
+    | vardec                                    { () }
+    | fundec                                    { () }
 
-dec : tydec                                     { $1 }
-    | vardec                                    { $1 }
-    | fundec                                    { $1 }
+tydec :: { () }
+tydec : type ID '=' ty                          { () }
 
-tydec : type ID '=' ty                          { Tree "$Type" [Tree $2 [], $4] }
+ty :: { () }
+ty : ID                                         { () }
+   | '{' tyfields '}'                           { () }
+   | array of ID                                { () }
 
-ty : ID                                         { Tree "$NameTy" [Tree $1 []] }
-   | '{' tyfields '}'                           { Tree "$RecordTy" $2 }
-   | array of ID                                { Tree "$ArrayTy" [Tree $3 []] }
+tyfields :: { () }
+tyfields :                                      { () }
+         | tyfields_rev                         { () }
 
-tyfields :                                      { [] }
-         | tyfields_rev                         { reverse $1 }
+tyfields_rev :: { () }
+tyfields_rev : typefield                        { () }
+             | tyfields_rev ',' typefield       { () }
 
-tyfields_rev : typefield                        { [$1] }
-             | tyfields_rev ',' typefield       { $3 : $1 }
+typefield :: { () }
+typefield : ID ':' type_id                      { () }
 
-typefield : ID ':' type_id                      { Tree "$Field" [Tree $1 [], Tree $3 []] }
+type_id :: { () }
+type_id : ID                                    { () }
 
-type_id : ID                                    { $1 }
+vardec :: { () }
+vardec : var ID opt_type ':=' exp               { () }
 
-vardec : var ID opt_type ':=' exp               { Tree "$Var" ([Tree $2 []] ++ $3 ++ [$5]) }
+opt_type :: { () }
+opt_type :                                      { () }
+         | ':' type_id                          { () }
 
-opt_type :                                      { [] }
-         | ':' type_id                          { [Tree $2 []] }
-
+fundec :: { () }
 fundec : function ID '(' tyfields ')' opt_type '=' exp
-                                                { Tree "$Function" ([Tree $2 []] ++ $4 ++ $6 ++ [$8]) }
+                                                { () }
 
-exp : matched                                   { $1 }
-    | unmatched                                 { $1 }
+exp :: { () }
+exp : matched                                   { () }
+    | unmatched                                 { () }
 
-matched : disj                                  { $1 }
-        | lvalue ':=' matched                   { Tree ":=" [$1, $3] }
-        | ID '[' matched ']' of matched         { Tree "$Array" [Tree $1 [], $3, $6] }
-        | if exp then matched else matched      { Tree "$If" [$2, $4, $6] }
-        | while exp do matched                  { Tree "$While" [$2, $4] }
-        | for ID ':=' exp to exp do matched     { Tree "$For" [Tree $2 [], $4, $6, $8] }
+matched :: { () }
+matched : disj                                  { () }
+        | lvalue ':=' matched                   { () }
+        | ID '[' matched ']' of matched         { () }
+        | if exp then matched else matched      { () }
+        | while exp do matched                  { () }
+        | for ID ':=' exp to exp do matched     { () }
 
-unmatched : lvalue ':=' unmatched               { Tree ":=" [$1, $3] }
-          | ID '[' matched ']' of unmatched     { Tree "$Array" [Tree $1 [], $3, $6] }
-          | if exp then matched else unmatched  { Tree "$If" [$2, $4, $6] }
-          | if exp then matched                 { Tree "$If" [$2, $4, Tree "SeqExp" []] }
-          | while exp do unmatched              { Tree "$While" [$2, $4] }
-          | for ID ':=' exp to exp do unmatched { Tree "$For" [Tree $2 [], $4, $6, $8] }
+unmatched :: { () }
+unmatched : lvalue ':=' unmatched               { () }
+          | ID '[' matched ']' of unmatched     { () }
+          | if exp then matched else unmatched  { () }
+          | if exp then matched                 { () }
+          | while exp do unmatched              { () }
+          | for ID ':=' exp to exp do unmatched { () }
 
-lvalue : ID lvalue1                             { $2 (Tree $1 []) }
+lvalue :: { () }
+lvalue : ID lvalue1                             { () }
 
-lvalue1 :                                       { \v -> v }
-        | '[' matched ']' lvalue1               { \v -> $4 (Tree "[]" [v, $2]) }
-        | '.' ID lvalue1                        { \v -> $3 (Tree "." [v, Tree $2 []]) }
+lvalue1 :: { () }
+lvalue1 :                                       { () }
+        | '[' matched ']' lvalue1               { () }
+        | '.' ID lvalue1                        { () }
 
-disj : disj '|' conj                            { Tree "$If" [$1, Tree "1" [], $3] }
-     | conj                                     { $1 }
+disj :: { () }
+disj : disj '|' conj                            { () }
+     | conj                                     { () }
 
-conj : conj '&' comp                            { Tree "$If" [$1, $3, Tree "0" []] }
-     | comp                                     { $1 }
+conj :: { () }
+conj : conj '&' comp                            { () }
+     | comp                                     { () }
 
-comp : arith_exp rel arith_exp                  { Tree $2 [$1, $3] }
-     | arith_exp                                { $1 }
+comp :: { () }
+comp : arith_exp rel arith_exp                  { () }
+     | arith_exp                                { () }
 
-rel : '='                                       { "=" }
-    | '<>'                                      { "<>" }
-    | '<'                                       { "<" }
-    | '<='                                      { "<=" }
-    | '>'                                       { ">" }
-    | '>='                                      { ">=" }
+rel :: { () }
+rel : '='                                       { () }
+    | '<>'                                      { () }
+    | '<'                                       { () }
+    | '<='                                      { () }
+    | '>'                                       { () }
+    | '>='                                      { () }
 
-arith_exp : arith_exp add_op term               { Tree $2 [$1, $3] }
-          | term                                { $1 }
+arith_exp :: { () }
+arith_exp : arith_exp add_op term               { () }
+          | term                                { () }
 
-add_op : '+'                                    { "+" }
-       | '-'                                    { "-" }
+add_op :: { () }
+add_op : '+'                                    { () }
+       | '-'                                    { () }
 
-term : term mul_op pref_exp                     { Tree $2 [$1, $3] }
-     | pref_exp                                 { $1 }
+term :: { () }
+term : term mul_op pref_exp                     { () }
+     | pref_exp                                 { () }
 
-mul_op : '*'                                    { "*" }
-       | '/'                                    { "/" }
+mul_op :: { () }
+mul_op : '*'                                    { () }
+       | '/'                                    { () }
 
-pref_exp : '-' pref_exp                         { Tree "-" [Tree "0" [], $2] }
-         | factor                               { $1 }
+pref_exp :: { () }
+pref_exp : '-' pref_exp                         { () }
+         | factor                               { () }
 
-factor : lvalue                                 { $1 }
-       | nil                                    { Tree "nil" [] }
-       | '(' expseq ')'                         { $2 }
-       | INT                                    { Tree (show $1) [] }
-       | STRING                                 { Tree (makeLabel $1) [] }
-       | ID '(' call_args ')'                   { Tree "$Call" (Tree $1 [] : $3) }
-       | type_id '{' fields '}'                 { Tree "$Record" (Tree $1 [] : $3) }
-       | break                                  { Tree "$Break" [] }
-       | let decs in expseq end                 { Tree "$Let" ($2 ++ [$4]) }
+factor :: { () }
+factor : lvalue                                 { () }
+       | nil                                    { () }
+       | '(' expseq ')'                         { () }
+       | INT                                    { () }
+       | STRING                                 { () }
+       | ID '(' call_args ')'                   { () }
+       | type_id '{' fields '}'                 { () }
+       | break                                  { () }
+       | let decs in expseq end                 { () }
 
-call_args :                                     { [] }
-          | call_args_rev                       { reverse $1 }
+call_args :: { () }
+call_args :                                     { () }
+          | call_args_rev                       { () }
 
-call_args_rev : exp                             { [$1] }
-              | call_args_rev ',' exp           { $3 : $1 }
+call_args_rev :: { () }
+call_args_rev : exp                             { () }
+              | call_args_rev ',' exp           { () }
 
-fields :                                        { [] }
-       | fields_rev                             { reverse $1 }
+fields :: { () }
+fields :                                        { () }
+       | fields_rev                             { () }
 
-fields_rev : field                              { [$1] }
-           | fields_rev ',' field               { $3 : $1 }
+fields_rev :: { () }
+fields_rev : field                              { () }
+           | fields_rev ',' field               { () }
 
-field : ID '=' exp                              { Tree "$AssignField" [Tree $1 [], $3] }
+field :: { () }
+field : ID '=' exp                              { () }
 
-expseq :                                        { expseqToTree [] }
-       | expseq_rev                             { expseqToTree (reverse $1) }
+expseq :: { () }
+expseq :                                        { () }
+       | expseq_rev                             { () }
 
-expseq_rev : exp                                { [$1] }
-           | expseq_rev ';' exp                 { $3 : $1 }
+expseq_rev :: { () }
+expseq_rev : exp                                { () }
+           | expseq_rev ';' exp                 { () }
 
 {
--- tree helpers ----------------------------------------------------------------
-
-expseqToTree :: [Tree String] -> Tree String
-expseqToTree [e] = e
-expseqToTree es  = Tree "SeqExp" es
-
-makeLabel :: String -> String
-makeLabel = concatMap (\c -> if c == '"' then "\\\"" else [c]) . show
-
 -- alex/happy interface --------------------------------------------------------
 
 lexwrap :: (Token -> Alex a) -> Alex a
@@ -197,6 +219,6 @@ parseError :: Token -> Alex a
 parseError (Token p t) =
   alexError' p ("parse error at token '" ++ unLex t ++ "'")
 
-parser :: FilePath -> String -> Either String (Tree String)
+parser :: FilePath -> String -> Either String ()
 parser = runAlex' parseProgram
 }
