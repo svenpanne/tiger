@@ -1,9 +1,7 @@
 module Main ( main ) where
 
-import AbSyn hiding ( args, result )
 import DOT ( Tree(..), toDOT )
-import Lexer ( Pos )
-import Parser ( parser )
+import Parser hiding ( args, result )
 import System.Environment ( getArgs )
 import System.IO ( hPutStrLn, stderr )
 

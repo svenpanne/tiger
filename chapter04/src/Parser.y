@@ -1,9 +1,8 @@
 {
-module Parser ( Tree(..), parser ) where
+module Parser ( module AbSyn, parser ) where
 
 import AbSyn
 import Prelude hiding ( Ordering(..) )
-import DOT ( Tree(..) )
 import Lexer
 }
 
@@ -64,7 +63,7 @@ program :: { Exp }
 program : exp                                   { $1 }
 
 decs :: { [Dec] }
-decs : decs_rev                                 { reverse $1 }
+decs : decs_rev                                 { groupDecs (reverse $1) }
 
 decs_rev :: { [Dec] }
 decs_rev :                                      { [] }
@@ -216,6 +215,16 @@ expseq_rev : exp                                { [$1] }
 
 {
 -- tree helpers ----------------------------------------------------------------
+
+-- Doing the grouping directly in the grammar would be possible, but much more
+-- complicated.
+groupDecs :: [Dec] -> [Dec]
+groupDecs [] = []
+groupDecs (x@(FunctionDec xs) : (y@(FunctionDec ys) : zs)) =
+  groupDecs (FunctionDec (xs ++ ys) : zs)
+groupDecs (x@(TypeDec xs) : (y@(TypeDec ys) : zs)) =
+  groupDecs (TypeDec (xs ++ ys) : zs)
+groupDecs (x:xs) = x : groupDecs xs
 
 tokenInt :: Token -> Integer
 tokenInt = tokenClassInt . tokenClass

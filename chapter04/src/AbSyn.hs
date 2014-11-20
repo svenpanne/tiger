@@ -1,6 +1,6 @@
-module AbSyn where
+module AbSyn ( module AbSyn, module Lexer ) where
 
-import Lexer ( Pos )
+import Lexer ( Pos, Line, Column )
 
 type Symbol = String -- TODO!
 
