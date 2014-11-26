@@ -2,11 +2,12 @@ module Main ( main ) where
 
 import DOT ( Tree(..), toDOT )
 import Parser hiding ( args, result )
+import Symbol ( name )
 import System.Environment ( getArgs )
 import System.IO ( hPutStrLn, stderr )
 
 symbolToTree :: Symbol -> Tree String
-symbolToTree s = Tree s []
+symbolToTree s = Tree (name s) []
 
 varToTree :: Var -> Tree String
 varToTree v = case v of

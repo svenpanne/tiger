@@ -1,8 +1,7 @@
-module AbSyn ( module AbSyn, module Lexer ) where
+module AbSyn ( module AbSyn, module Lexer, module Symbol ) where
 
 import Lexer ( Pos, Line, Column )
-
-type Symbol = String -- TODO!
+import Symbol ( Symbol)
 
 data Var =
     SimpleVar Symbol Pos
@@ -30,7 +29,7 @@ data Exp =
 
 data Dec =
     FunctionDec [FunDec]
-  | VarDec { name :: Symbol, {- escape: bool ref, -} typ' :: Maybe (Symbol, Pos), init' :: Exp, pos' :: Pos }
+  | VarDec { name' :: Symbol, {- escape: bool ref, -} typ' :: Maybe (Symbol, Pos), init' :: Exp, pos' :: Pos }
   | TypeDec [TyDec]
   deriving ( Show )
 
@@ -53,11 +52,11 @@ data Oper =
   | GeOp
   deriving ( Show )
 
-data Field = Field { name' :: Symbol, {- escape: bool ref, -} typ'' :: Symbol, pos'' :: Pos }
+data Field = Field { name'' :: Symbol, {- escape: bool ref, -} typ'' :: Symbol, pos'' :: Pos }
   deriving ( Show )
 
-data FunDec = FunDec { name'' :: Symbol, params :: [Field], result :: Maybe (Symbol, Pos), body' :: Exp, pos''' :: Pos }
+data FunDec = FunDec { name''' :: Symbol, params :: [Field], result :: Maybe (Symbol, Pos), body' :: Exp, pos''' :: Pos }
   deriving ( Show )
 
-data TyDec  = TyDec { name''' :: Symbol, ty :: Ty, pos'''' :: Pos }
+data TyDec  = TyDec { name'''' :: Symbol, ty :: Ty, pos'''' :: Pos }
   deriving ( Show )

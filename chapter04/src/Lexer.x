@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-unused-matches
     -fno-warn-missing-signatures -fno-warn-name-shadowing -fno-warn-amp #-}
 module Lexer (
-  Token(..), Pos(..), Line, Column, TokenClass(..), unLex,
+  Token(..), Pos(..), Line, Column, TokenClass(..), Symbol, unLex,
   Alex, runAlex', alexMonadScan', alexError'
 ) where
 
@@ -10,6 +10,7 @@ import Prelude hiding ( Ordering(..) )
 import Control.Monad ( when )
 import Data.Char ( chr, showLitChar ) -- ord is imported by alex template
 import Numeric ( readDec )
+import Symbol ( Symbol, name, StringTable, emptyStringTable, symbol )
 }
 
 %wrapper "monadUserState"
@@ -62,7 +63,7 @@ tiger :-
 <0>         ":="        { makeToken ASSIGN }
 <0>         [$digit]+   { makeTokenWith (INT . read) }
 <0>         $letter [$letter $digit _]*
-                        { makeTokenWith ID }
+                        { makeTokenUsing createID }
 
 <0>         \"          { startString }
 <string>    \"          { endString }
@@ -97,7 +98,8 @@ data AlexUserState = AlexUserState {
   filePath :: FilePath,
   commentDepth :: Int,
   stringStart :: Pos,
-  stringContents :: String }
+  stringContents :: String,
+  symbolTable :: StringTable }
 
 data Pos = Pos FilePath Line Column
 type Line = Int
@@ -115,7 +117,8 @@ alexInitUserState = AlexUserState {
   filePath = "<unknown>",
   commentDepth = 0,
   stringStart = makePos (filePath alexInitUserState) alexStartPos,
-  stringContents = "" }
+  stringContents = "",
+  symbolTable = emptyStringTable }
 
 getPos :: AlexInput -> Alex Pos
 getPos input = do
@@ -150,6 +153,13 @@ retrieveString = do
   alexSetUserState us{stringStart = stringStart alexInitUserState,
                       stringContents = stringContents alexInitUserState}
   return (stringStart us, reverse (stringContents us))
+
+createID :: String -> Alex TokenClass
+createID n = do
+  us <- alexGetUserState
+  let (s, t) = symbol n (symbolTable us)
+  alexSetUserState us{symbolTable = t}
+  return (ID s)
 
 -- tokens ----------------------------------------------------------------------
 
@@ -198,7 +208,7 @@ data TokenClass =
   | OR
   | ASSIGN
   | INT { tokenClassInt :: Integer }
-  | ID { tokenClassId :: String }
+  | ID { tokenClassId :: Symbol }
   | STRING { tokenClassString :: String }
   | EOF
   deriving ( Show )
@@ -245,7 +255,7 @@ unLex AND = "$"
 unLex OR = "|"
 unLex ASSIGN = ":="
 unLex (INT i) = show i
-unLex (ID s) = s
+unLex (ID s) = name s
 unLex (STRING s) = show s
 unLex EOF = "<EOF>"
 
@@ -260,9 +270,13 @@ makeToken :: TokenClass -> AlexAction Token
 makeToken = makeTokenWith . const
 
 makeTokenWith :: (String -> TokenClass) -> AlexAction Token
-makeTokenWith f input len = do
+makeTokenWith f = makeTokenUsing (return . f)
+
+makeTokenUsing :: (String -> Alex TokenClass) -> AlexAction Token
+makeTokenUsing f input len = do
   pos <- getPos input
-  return $ Token pos (f (getString input len))
+  x <- f (getString input len)
+  return $ Token pos x
 
 startString :: AlexAction Token
 startString input len = do

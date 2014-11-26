@@ -229,7 +229,7 @@ groupDecs (x:xs) = x : groupDecs xs
 tokenInt :: Token -> Integer
 tokenInt = tokenClassInt . tokenClass
 
-tokenId :: Token -> String
+tokenId :: Token -> Symbol
 tokenId = tokenClassId . tokenClass
 
 tokenString :: Token -> String
