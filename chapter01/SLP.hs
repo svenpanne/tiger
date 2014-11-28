@@ -64,10 +64,10 @@ lookUp i = fromMaybe (error ("unbound identifier " ++ i)) . lookup i
 
 --------------------------------------------------------------------------------
 
-type Eval a = StateT Table IO a
+type Eval = StateT Table IO
 
-runE :: Eval a -> IO a
-runE = flip evalStateT emptyTable
+evalE :: Eval a -> IO a
+evalE = flip evalStateT emptyTable
 
 lookUpE :: Id -> Eval Int
 lookUpE = gets . lookUp
@@ -81,7 +81,7 @@ putStrLnE = lift . putStrLn
 --------------------------------------------------------------------------------
 
 interp :: Stm -> IO ()
-interp = runE . interpStm
+interp = evalE . interpStm
 
 interpStm :: Stm -> Eval ()
 interpStm (CompoundStm s1 s2) = interpStm s1 >> interpStm s2
