@@ -3,7 +3,7 @@ module Types where
 import Symbol ( Symbol )
 
 newtype Unique = Unique Int
-  deriving ( Show )
+  deriving ( Eq, Show )
 
 data Ty =
     Record [(Symbol, Ty)] Unique

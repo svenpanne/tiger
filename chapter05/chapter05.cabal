@@ -25,6 +25,6 @@ library
                        transformers >=0.3 && <0.4,
                        unordered-containers >=0.2 && <0.3
   hs-source-dirs:      src
-  exposed-modules:     Symbol, Lexer, DOT, AbSyn, Parser, Types, Env, Semant
+  exposed-modules:     Translate, DOT, Symbol, Lexer, AbSyn, Parser, Types, Env, Semant
   default-language:    Haskell2010
   ghc-options:         -Wall
