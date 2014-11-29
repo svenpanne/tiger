@@ -1,7 +1,7 @@
 module AbSyn ( module AbSyn, module Lexer, module Symbol ) where
 
 import Lexer ( Pos, Line, Column )
-import Symbol ( Symbol)
+import Symbol ( Symbol )
 
 data Var =
     SimpleVar Symbol Pos
