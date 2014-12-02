@@ -14,22 +14,22 @@ data Exp =
   | NilExp
   | IntExp Integer
   | StringExp String Pos
-  | CallExp { func :: Symbol, args :: [Exp], pos :: Pos }
-  | OpExp { left :: Exp, oper :: Oper, right :: Exp, pos :: Pos }
-  | RecordExp { fields :: [(Symbol, Exp, Pos)], typ :: Symbol, pos :: Pos }
+  | CallExp Symbol [Exp] Pos
+  | OpExp Exp Oper Exp Pos
+  | RecordExp [(Symbol, Exp, Pos)] Symbol Pos
   | SeqExp [(Exp, Pos)]
-  | AssignExp { var :: Var, exp :: Exp, pos :: Pos }
-  | IfExp { test :: Exp, then' :: Exp, else' :: Maybe Exp, pos :: Pos }
-  | WhileExp { test :: Exp, body :: Exp, pos :: Pos }
-  | ForExp { var' :: Symbol, {- escape :: bool ref, -} lo :: Exp, hi :: Exp, body :: Exp, pos :: Pos }
+  | AssignExp Var Exp Pos
+  | IfExp Exp Exp (Maybe Exp) Pos
+  | WhileExp Exp Exp Pos
+  | ForExp Symbol {- escape :: bool ref, -} Exp Exp Exp Pos
   | BreakExp Pos
-  | LetExp { decs :: [Dec], body :: Exp, pos :: Pos }
-  | ArrayExp { typ :: Symbol, size :: Exp, init :: Exp, pos :: Pos }
+  | LetExp [Dec] Exp Pos
+  | ArrayExp Symbol Exp Exp Pos
   deriving ( Show )
 
 data Dec =
     FunctionDec [FunDec]
-  | VarDec { name' :: Symbol, {- escape: bool ref, -} typ' :: Maybe (Symbol, Pos), init' :: Exp, pos' :: Pos }
+  | VarDec Symbol {- escape: bool ref, -} (Maybe (Symbol, Pos)) Exp Pos
   | TypeDec [TyDec]
   deriving ( Show )
 
@@ -52,11 +52,11 @@ data Oper =
   | GeOp
   deriving ( Show )
 
-data Field = Field { name'' :: Symbol, {- escape: bool ref, -} typ'' :: Symbol, pos'' :: Pos }
+data Field = Field Symbol {- escape: bool ref, -} Symbol Pos
   deriving ( Show )
 
-data FunDec = FunDec { name''' :: Symbol, params :: [Field], result :: Maybe (Symbol, Pos), body' :: Exp, pos''' :: Pos }
+data FunDec = FunDec Symbol [Field] (Maybe (Symbol, Pos)) Exp Pos
   deriving ( Show )
 
-data TyDec  = TyDec { name'''' :: Symbol, ty :: Ty, pos'''' :: Pos }
+data TyDec  = TyDec Symbol Ty Pos
   deriving ( Show )
