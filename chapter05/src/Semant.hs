@@ -4,6 +4,7 @@ import AbSyn
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Error
+import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Functor.Identity
 import Env
@@ -13,38 +14,35 @@ import qualified Types
 
 --------------------------------------------------------------------------------
 
--- The state of our monad is a pair of value/type environments plus a unique supply.
-data TransState = TransState {
+data Envs = Envs {
   vEnv :: VEnv,
-  tEnv :: TEnv,
-  uniqueSupply :: [Types.Unique]
+  tEnv :: TEnv
 } deriving ( Show )
 
-initialTransState :: TransState
-initialTransState = TransState baseVEnv baseTEnv Types.uniqueSupply
+initialEnvs :: Envs
+initialEnvs = Envs baseVEnv baseTEnv
 
 --------------------------------------------------------------------------------
 
--- We need modifiable value/type environments and can fail.
-type Trans = StateT TransState (ErrorT String Identity)
+type Trans = StateT [Types.Unique] (ReaderT Envs (ErrorT String Identity))
 
 evalT :: Trans a -> Either String a
-evalT = runIdentity . runErrorT . flip evalStateT initialTransState
+evalT = runIdentity . runErrorT . flip runReaderT initialEnvs . flip evalStateT Types.uniqueSupply
 
 throwT :: Pos -> String -> Trans a
-throwT pos = lift . throwError . shows pos . showString ": "
+throwT pos = lift . lift . throwError . shows pos . showString ": "
 
-lookupT :: Pos -> (TransState -> Table a) -> Symbol -> Trans a
+lookupT :: Pos -> (Envs -> Table a) -> Symbol -> Trans a
 lookupT pos f sym = do
-  env <- gets f
+  env <- lift (asks f)
   case look sym env of
     Nothing -> throwT pos ("unknown identifier '" ++ show sym ++ "'")
     Just x -> return x
 
 nextUnique :: Trans Types.Unique
 nextUnique = do
-  (unique:rest) <- gets uniqueSupply
-  modify $ \s -> s{uniqueSupply = rest}
+  (unique:rest) <- get
+  put rest
   return unique
 
 --------------------------------------------------------------------------------
