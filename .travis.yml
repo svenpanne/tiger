@@ -72,6 +72,8 @@ before_script:
  - cabal update
  - ghc --version
  - ghc-pkg list
+ - cabal install alex
+ - ghc-pkg list
 
 script:
  - pushd chapter02
