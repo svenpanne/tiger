@@ -1,6 +1,6 @@
 {
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-unused-matches
-    -fno-warn-missing-signatures -fno-warn-name-shadowing -fno-warn-amp #-}
+    -fno-warn-missing-signatures -fno-warn-name-shadowing #-}
 module Lexer (
   Token(..), Pos(..), Line, Column, TokenClass(..), unLex,
   Alex, runAlex', alexMonadScan', alexError'
