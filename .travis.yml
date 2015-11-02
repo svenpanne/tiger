@@ -74,9 +74,6 @@ before_script:
  - ghc-pkg list
 
 script:
- - pushd chapter01
- - cabal install --enable-documentation
- - popd
  - pushd chapter02
  - cabal install --enable-documentation
  - popd
