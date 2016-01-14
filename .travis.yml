@@ -10,7 +10,7 @@ matrix:
          packages:
           - cabal-install-1.16
           - ghc-7.0.4
-          - alex-3.1.4
+          - alex-3.1.7
           - happy-1.19.5
    - env: CABALVER=1.16 GHCVER=7.2.2
      addons:
@@ -20,7 +20,7 @@ matrix:
          packages:
           - cabal-install-1.16
           - ghc-7.2.2
-          - alex-3.1.4
+          - alex-3.1.7
           - happy-1.19.5
    - env: CABALVER=1.16 GHCVER=7.4.2
      addons:
@@ -30,7 +30,7 @@ matrix:
          packages:
           - cabal-install-1.16
           - ghc-7.4.2
-          - alex-3.1.4
+          - alex-3.1.7
           - happy-1.19.5
    - env: CABALVER=1.16 GHCVER=7.6.3
      addons:
@@ -40,7 +40,7 @@ matrix:
          packages:
           - cabal-install-1.16
           - ghc-7.6.3
-          - alex-3.1.4
+          - alex-3.1.7
           - happy-1.19.5
    - env: CABALVER=1.20 GHCVER=7.8.4
      addons:
@@ -50,18 +50,26 @@ matrix:
          packages:
           - cabal-install-1.20
           - ghc-7.8.4
-          - alex-3.1.4
+          - alex-3.1.7
           - happy-1.19.5
-   - env: CABALVER=1.22 GHCVER=7.10.2
+   - env: CABALVER=1.22 GHCVER=7.10.3
      addons:
        apt:
          sources:
           - hvr-ghc
          packages:
           - cabal-install-1.22
-          - ghc-7.10.2
-          - alex-3.1.4
+          - ghc-7.10.3
+          - alex-3.1.7
           - happy-1.19.5
+   - env: CABALVER=1.24 GHCVER=8.0.1
+     addons:
+       apt:
+         sources:
+          - hvr-ghc
+         packages:
+          - cabal-install-1.24
+          - ghc-8.0.1
    - env: CABALVER=head GHCVER=head
      addons:
        apt:
@@ -70,7 +78,7 @@ matrix:
          packages:
           - cabal-install-head
           - ghc-head
-          - alex-3.1.4
+          - alex-3.1.7
           - happy-1.19.5
   allow_failures:
    - env: CABALVER=head GHCVER=head
