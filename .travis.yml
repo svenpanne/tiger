@@ -90,6 +90,8 @@ install:
  - export PATH="/opt/cabal/$CABALVER/bin:/opt/ghc/$GHCVER/bin:/opt/alex/3.1.7/bin:/opt/happy/1.19.5/bin:$PATH"
 
 before_script:
+ - ls -l /opt
+ - ls -l /opt/alex*
  - cabal --version
  - cabal update
  - ghc --version
