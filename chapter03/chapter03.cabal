@@ -4,7 +4,7 @@ synopsis:            Modern Compiler Implementation in ML (Chapter 3)
 description:         Parsing
 homepage:            https://github.com/svenpanne/tiger
 license:             BSD3
-license-file:        ../LICENSE
+license-file:        LICENSE
 author:              Sven Panne
 maintainer:          svenpanne@gmail.com
 category:            Compiler
